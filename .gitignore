@@ -2,3 +2,5 @@ node_modules
 .DS_Store
 
 database
+export.txt
+export-2.txt
