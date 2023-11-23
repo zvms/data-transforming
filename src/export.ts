@@ -20,29 +20,33 @@ const tables = [
   "class_notice",
 ];
 
-function exportTables(db: Database) {
-  const promises = tables.map((table) => {
+function exportTables(
+  db: Database
+): Promise<{ key: string; value: unknown[] }[]> {
+  const promises = tables.map((table: string) => {
     return new Promise((resolve, reject) => {
-      db.all(`SELECT * FROM ${table}`, (err, rows) => {
+      db.all(`SELECT * FROM ${table}`, (err: Error, rows: unknown[]) => {
         if (err) {
           reject(err);
         }
-        resolve(rows);
+        resolve({
+          key: table,
+          value: rows,
+        } as { key: string; value: unknown[] });
       });
     });
-  });
+  }) as Promise<{ key: string; value: unknown[] }>[];
   return Promise.all(promises);
 }
 
-export function exportToJSON() {
+export async function exportToJSON() {
   const db = connectToSqlite();
   const folder = resolve("data", "export");
-  exportTables(db).then((tables) => {
-    const data = tables.reduce((acc: any, table: any, i) => {
-      const tableName: any = tables[i];
-      acc[tableName] = table;
-      return acc;
-    }, {});
-    console.log(data);
+  const tables = await exportTables(db);
+  tables.forEach((table: { key: string; value: unknown[] }) => {
+    writeFileSync(
+      resolve(folder, table.key + ".json"),
+      JSON.stringify(table.value, null, 2)
+    );
   });
 }
