@@ -44,6 +44,7 @@ export async function exportToJSON() {
   const folder = resolve("data", "export");
   const tables = await exportTables(db);
   tables.forEach((table: { key: string; value: unknown[] }) => {
+    console.log("Exporting table", table.key);
     writeFileSync(
       resolve(folder, table.key + ".json"),
       JSON.stringify(table.value, null, 2)

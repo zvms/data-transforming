@@ -49,6 +49,7 @@ async function exportToJSON() {
   const folder = path.resolve("data", "export");
   const tables = await exportTables(db);
   tables.forEach((table) => {
+    console.log("Exporting table", table.key);
     fs.writeFileSync(
       path.resolve(folder, table.key + ".json"),
       JSON.stringify(table.value, null, 2)
@@ -906,7 +907,158 @@ var md5 = {exports: {}};
 })(md5);
 var md5Exports = md5.exports;
 
-function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
+function _optionalChain$1(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Class {
+   __init() {this.studentList = [];}
+   __init2() {this.codeStart = 0;}
+   __init3() {this.classid = 0;}
+  constructor(cid) {Class.prototype.__init.call(this);Class.prototype.__init2.call(this);Class.prototype.__init3.call(this);
+    const year = Math.floor(cid / 100);
+    const classid = cid % 100;
+    const yearInCode = year % 100;
+    this.classid = cid;
+    const specialCodeMap = {
+      9: {
+        schoolId: 39,
+        classId: 1,
+      },
+      10: {
+        schoolId: 39,
+        classId: 2,
+      },
+      11: {
+        schoolId: 9,
+        classId: 9,
+      },
+      12: {
+        schoolId: 9,
+        classId: 10,
+      },
+    } ;
+    if (
+      Object.entries(specialCodeMap)
+        .map((x) => x[0].toString())
+        .includes(classid.toString())
+    ) {
+      const res = specialCodeMap[classid];
+      this.codeStart = res.schoolId * 10000 + yearInCode * 100 + res.classId;
+    } else {
+      const id = classid % 100;
+      if (id < 10) {
+        this.codeStart = 90000 + yearInCode * 100 + classid;
+      } else {
+        this.codeStart = 390000 + yearInCode * 100 + (classid % 10);
+      }
+    }
+  }
+   appendUser(user) {
+    this.studentList.push(user);
+    console.log(
+      "Stored user with id",
+      user.id,
+      "in _id",
+      user._id,
+      "into class",
+      this.classid
+    );
+  }
+   removeUser(_id) {
+    this.studentList = this.studentList.filter((x) => x._id !== _id);
+  }
+   getUserCode(_id) {
+    const idx = this.studentList.findIndex((x) => x._id === _id);
+    return this.codeStart * 100 + idx + 1;
+  }
+   getUser(_id) {
+    console.log(
+      "Getting user",
+      _id,
+      "from class",
+      this.classid,
+      this.studentList.find((x) => x._id === _id),
+      "in",
+      this.studentList
+    );
+    return this.studentList.find((x) => x._id === _id);
+  }
+}
+
+class ZhenhaiHighSchool {
+   __init4() {this.classList = [];}
+  constructor() {ZhenhaiHighSchool.prototype.__init4.call(this);
+    for (let y = 2022; y <= 2023; y++) {
+      for (let i = 1; i <= 17; i++) {
+        this.classList.push(new Class(y * 100 + i));
+      }
+    }
+  }
+   appendUser(user) {
+    console.log(
+      "Append user",
+      user.id,
+      "into class",
+      Math.floor(user.id / 100)
+    );
+    const idx = this.classList.findIndex(
+      (x) => x.classid === Math.floor(user.id / 100)
+    );
+    if (idx !== -1) this.classList[idx].appendUser(user);
+  }
+   removeUser(_id, classid) {
+    const cls = this.classList.find((x) => x.classid === classid);
+    _optionalChain$1([cls, 'optionalAccess', _ => _.removeUser, 'call', _2 => _2(_id)]);
+  }
+   getUserCode(_id, classid) {
+    const idx = this.classList.findIndex((x) => x.classid === classid);
+    if (idx !== -1) return this.classList[idx].getUserCode(_id);
+  }
+   studentExchange(change) {
+    const oldClassId = Math.floor(change.previous / 100);
+    const newClassId = change.toClass;
+    const oldClass = this.classList.find((x) => x.classid === oldClassId);
+    const newClass = this.classList.find((x) => x.classid === newClassId);
+    console.log(oldClass, newClass, oldClass && newClass);
+    if (oldClass && newClass) {
+      const old = oldClass.getUser(change._id);
+      console.log(old, "old 114514", change._id, oldClassId, newClassId);
+      if (old) {
+        oldClass.removeUser(change._id);
+        newClass.appendUser(old);
+        console.log(
+          "Student",
+          change._id,
+          "exchanged from",
+          oldClassId,
+          "to",
+          newClassId,
+          "with new code",
+          this.getUserCode(change._id, newClassId)
+        );
+      }
+    }
+  }
+   getClassStudentList(year, classid) {
+    const cls = this.classList.find((x) => x.classid === year * 100 + classid);
+    return _optionalChain$1([cls, 'optionalAccess', _3 => _3.studentList]);
+  }
+}
+
+function _nullishCoalesce$1(lhs, rhsFn) { if (lhs != null) { return lhs; } else { return rhsFn(); } } function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
+const zhzx = new ZhenhaiHighSchool();
+
 function getUserPosition(permission) {
   /**
    * 1. Student - 0
@@ -925,7 +1077,7 @@ function getUserPosition(permission) {
   const isInspector = permission & 8;
   const isAdmin = permission & 16;
   const isSystem = permission & 32;
-  return (
+  const result = (
     [
       "student",
       "secretary",
@@ -947,17 +1099,35 @@ function getUserPosition(permission) {
         isSystem,
       ][i]
   );
+  console.log("User", permission, "has position", result);
+  return result;
 }
 
 function UserTransform(user) {
-  return {
+  const result = {
     _id: new mongodb.ObjectId(),
     id: user.userid,
     name: user.username,
-    sex: "unknown",
+    sex: "unknown" ,
     position: getUserPosition(user.permission),
     code: user.classid * 100 + (user.userid % 100),
   };
+  if (user.userid > 20219999) {
+    zhzx.appendUser({
+      id: result.id,
+      _id: result._id.toString(),
+      name: result.name,
+    });
+    const code = zhzx.getUserCode(
+      result._id.toString(),
+      Math.floor(result.id / 100)
+    );
+    if (code) {
+      result.code = code;
+    }
+  }
+  console.log("Transformed user", user.userid, "with code", result.code);
+  return result;
 }
 
 function withPassword(user) {
@@ -985,6 +1155,25 @@ function transformUserToJSON() {
     path.resolve("data", "handler", "user-transformed.json"),
     JSON.stringify(transformed, null, 2)
   );
+  const interclassMap = getUserWhoseNumberIsNotStartsWithClassId(parsed);
+  const class2Grade2023 = resortNumberListInClass2Grade2023();
+  const maps = [interclassMap, class2Grade2023].flat(1);
+  fs.writeFileSync(
+    path.resolve("data", "handler", "mappings.json"),
+    JSON.stringify(
+      maps.filter((x) => _optionalChain([x, 'optionalAccess', _2 => _2.code]) && x),
+      null,
+      2
+    )
+  );
+  fs.writeFileSync(
+    path.resolve("data", "handler", "classid-changed.json"),
+    JSON.stringify(getUserWhoseNumberIsNotStartsWithClassId(parsed), null, 2)
+  );
+  fs.writeFileSync(
+    path.resolve("data", "handler", "class2-2023.json"),
+    JSON.stringify(resortNumberListInClass2Grade2023(), null, 2)
+  );
 }
 
 function findUser(user) {
@@ -993,14 +1182,101 @@ function findUser(user) {
     "utf-8"
   );
   const parsed = JSON.parse(list) ;
-  const result = _optionalChain([parsed, 'access', _2 => _2.find, 'call', _3 => _3((u) => u.id === user), 'optionalAccess', _4 => _4._id]) 
+  const result = _optionalChain([parsed, 'access', _3 => _3.find, 'call', _4 => _4((u) => u.id === user), 'optionalAccess', _5 => _5._id]) 
 
 ;
   if (result) {
+    console.log("Found user", user, "with id", result);
     return new mongodb.ObjectId(result);
   } else {
     throw new Error("User not found");
   }
+}
+
+function getUserWhoseNumberIsNotStartsWithClassId(users) {
+  return users
+    .filter((user) => {
+      return !user.userid.toString().startsWith(user.classid.toString());
+    })
+    .map((x) => {
+      zhzx.studentExchange({
+        _id: findUser(x.userid).toString(),
+        toClass: x.classid,
+        previous: x.userid,
+      });
+      // Grade 2022, their `id` is not changed, but in Grade 2023, their `id` is changed.
+      const result = {
+        _id: findUser(x.userid),
+        id: x.userid,
+        name: x.username,
+        code: zhzx.getUserCode(findUser(x.userid).toString(), x.classid),
+      };
+      if (x.userid > 20229999 && result.code) {
+        const ending = result.code % 100;
+        result.id = x.classid * 100 + ending;
+      }
+      return result;
+    });
+}
+
+function resortNumberListInClass2Grade2023() {
+  const studentList = _optionalChain([zhzx
+, 'access', _6 => _6.getClassStudentList, 'call', _7 => _7(2023, 2)
+, 'optionalAccess', _8 => _8.map, 'call', _9 => _9((x) => {
+      const code = _nullishCoalesce$1(zhzx.getUserCode(x._id, 202302), () => ( 0));
+      return {
+        _id: x._id,
+        id: 20230200 + (code % 100),
+        name: x.name,
+        code,
+      };
+    })
+, 'access', _10 => _10.sort, 'call', _11 => _11((a, b) => a.code - b.code)]);
+  return studentList;
+}
+
+
+
+
+
+
+
+
+function mappingUser(users, mappings) {
+  return users.map((user) => {
+    if (user.id > 20219999) {
+      const map = mappings.find((x) => x._id === user._id.toString());
+      if (map) {
+        console.log(map, "map");
+        return {
+          ...user,
+          id: map.id,
+          code: map.code,
+        };
+      } else return user;
+    } else return user;
+  });
+}
+
+function transformUserToJSONWithMapping() {
+  const users = fs.readFileSync(
+    path.resolve("data", "handler", "user-transformed.json"),
+    "utf-8"
+  );
+  const maps = fs.readFileSync(
+    path.resolve("data", "handler", "mappings.json"),
+    "utf-8"
+  );
+  const parsed = JSON.parse(users);
+  const mapsParsed = JSON.parse(maps);
+  const mapped = mappingUser(
+    parsed ,
+    mapsParsed 
+  );
+  fs.writeFileSync(
+    path.resolve("data", "handler", "user-transformed-mapped.json"),
+    JSON.stringify(mapped, null, 2)
+  );
 }
 
 var V3VolunteerStatus; (function (V3VolunteerStatus) {
@@ -1443,11 +1719,18 @@ var dayjs_minExports = dayjs_min.exports;
 var dayjs = /*@__PURE__*/getDefaultExportFromCjs(dayjs_minExports);
 
 function _nullishCoalesce(lhs, rhsFn) { if (lhs != null) { return lhs; } else { return rhsFn(); } }
+
 function transformLinearStructure(activities) {
   return activities.map((activity) => {
+    console.log(
+      "Transforming activity",
+      activity.id,
+      "with status",
+      activity.status
+    );
     const status = getStatus(activity.status);
     const type = getType(activity.type, activity.status);
-    return {
+    const result = {
       _id: new mongodb.ObjectId(),
       type,
       name: activity.name,
@@ -1463,6 +1746,20 @@ function transformLinearStructure(activities) {
     } 
 
 ;
+    const registration = {
+      place: "可莉不知道哦",
+      deadline: dayjs(activity.time).toISOString(),
+      classes: [],
+    } ;
+    if (result.type === "specified") {
+      console.log("It is a specified activity.");
+      return {
+        ...result,
+        registration: registration,
+      } 
+
+;
+    } else return result;
   });
 }
 
@@ -1472,6 +1769,7 @@ function transformActivityMember(
   images = []
 ) {
   const status = getUserStatus(member.status);
+  console.log("Transforming member", member.userid, "with status", status);
   return {
     _id: findUser(member.userid).toString(),
     status,
@@ -1485,11 +1783,13 @@ function transformActivityMember(
 function appendMemberIntoActivity(
   activities,
   members,
-  images = []
+  images = [],
+  classes = []
 ) {
   members.map((member) => {
     const idx = activities.findIndex((x) => x.oid === member.volid);
     if (idx) {
+      console.log("Appending member", member.userid, "into activity", idx);
       const activity = activities[idx];
       const image = images
         .filter((x) => x.volid === member.volid && x.userid === member.userid)
@@ -1503,7 +1803,36 @@ function appendMemberIntoActivity(
       );
     }
   });
-  return activities.filter((x) => x.members.length !== 0);
+  return activities
+    .map((activity) => {
+      const cls = classes.filter((x) => x.volid === activity.oid);
+      console.log(
+        "Appending classes",
+        cls.map((x) => x.classid),
+        "into activity",
+        activity.oid
+      );
+      if (cls.length !== 0 && activity.type === "specified") {
+        return {
+          ...activity,
+          registration: {
+            ...activity.registration,
+            classes: cls.map((x) => ({
+              class: x.classid,
+              min: 0,
+              max: x.max,
+            })),
+          },
+        };
+      } else return activity;
+    })
+    .filter(
+      (x) =>
+        x.members.length !== 0 &&
+        !x.description.includes(".ignore") &&
+        !x.description.includes("测试") &&
+        !x.name.includes("测试")
+    );
 }
 
 function transformActivityToJSON() {
@@ -1522,11 +1851,17 @@ function transformActivityToJSON() {
     "utf-8"
   );
   const image_parsed = JSON.parse(images) ;
+  const classes = fs.readFileSync(
+    path.resolve("data", "export", "class_vol.json"),
+    "utf-8"
+  );
+  const class_parsed = JSON.parse(classes) ;
   const transformed = transformLinearStructure(parsed);
   const appended = appendMemberIntoActivity(
     transformed,
     user_parsed,
-    image_parsed
+    image_parsed,
+    class_parsed
   );
   fs.writeFileSync(
     path.resolve("data", "handler", "activity-transformed.json"),
@@ -1535,9 +1870,12 @@ function transformActivityToJSON() {
 }
 
 async function main() {
+  console.time("export");
   await exportToJSON();
   transformUserToJSON();
   transformActivityToJSON();
+  transformUserToJSONWithMapping();
+  console.timeEnd("export");
 }
 
 main();

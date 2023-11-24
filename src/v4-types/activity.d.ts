@@ -60,7 +60,7 @@ export type MemberActivityStatus =
 
 export type ActivityStatus = "pending" | "effective" | "refused";
 
-export interface SpecifiedActivity extends Activity {
+export interface SpecifiedActivity<T> extends Activity<T> {
   type: "specified";
   registration: Registration;
 }
@@ -136,8 +136,8 @@ export type SpecialActivityInstance =
   | DeductionSpecialActivity
   | OtherSpecialActivity;
 
-export type ActivityInstance =
-  | Activity
+export type ActivityInstance<T = string> =
+  | Activity<T>
   | SpecifiedActivity
   | SocialActivity
   | ScaleActivity
