@@ -22,7 +22,7 @@ export function getUserPosition(permission: number): UserPosition[] {
   const isStudent = true;
   const isSecretary = permission & 1;
   const isDepartment = permission & 2;
-  const isAutidor = permission & 4;
+  const isAuditor = permission & 4;
   const isInspector = permission & 8;
   const isAdmin = permission & 16;
   const isSystem = permission & 32;
@@ -42,13 +42,12 @@ export function getUserPosition(permission: number): UserPosition[] {
         isStudent,
         isSecretary,
         isDepartment,
-        isAutidor,
+        isAuditor,
         isInspector,
         isAdmin,
         isSystem,
       ][i]
   );
-  console.log("User", permission, "has position", result);
   return result;
 }
 
@@ -196,11 +195,11 @@ export function mappingUser(users: User<ObjectId>[], mappings: UserMapping[]) {
     if (user.id > 20219999) {
       const map = mappings.find((x) => x._id === user._id.toString());
       if (map) {
-        console.log(map, "map");
         return {
           ...user,
           id: map.id,
           code: map.code,
+          password: md5(map.id.toString())
         };
       } else return user;
     } else return user;

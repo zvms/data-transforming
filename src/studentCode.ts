@@ -74,15 +74,6 @@ export class Class {
     return this.codeStart * 100 + idx + 1;
   }
   public getUser(_id: string) {
-    console.log(
-      "Getting user",
-      _id,
-      "from class",
-      this.classid,
-      this.studentList.find((x) => x._id === _id),
-      "in",
-      this.studentList
-    );
     return this.studentList.find((x) => x._id === _id);
   }
 }
@@ -121,10 +112,8 @@ export class ZhenhaiHighSchool {
     const newClassId = change.toClass;
     const oldClass = this.classList.find((x) => x.classid === oldClassId);
     const newClass = this.classList.find((x) => x.classid === newClassId);
-    console.log(oldClass, newClass, oldClass && newClass);
     if (oldClass && newClass) {
       const old = oldClass.getUser(change._id);
-      console.log(old, "old 114514", change._id, oldClassId, newClassId);
       if (old) {
         oldClass.removeUser(change._id);
         newClass.appendUser(old);

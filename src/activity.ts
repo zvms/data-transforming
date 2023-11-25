@@ -104,12 +104,15 @@ function appendMemberIntoActivity(
   return activities
     .map((activity) => {
       const cls = classes.filter((x) => x.volid === activity.oid);
-      console.log(
-        "Appending classes",
-        cls.map((x) => x.classid),
-        "into activity",
-        activity.oid
-      );
+      if (cls.length === 0)
+        console.log("No classes found for activity", activity.oid);
+      else
+        console.log(
+          "Appending classes",
+          cls.map((x) => x.classid).join(", "),
+          "into activity",
+          activity.oid
+        );
       if (cls.length !== 0 && activity.type === "specified") {
         return {
           ...activity,
@@ -130,7 +133,11 @@ function appendMemberIntoActivity(
         !x.description.includes(".ignore") &&
         !x.description.includes("测试") &&
         !x.name.includes("测试")
-    );
+    )
+    .map((x) => {
+      delete x.oid;
+      return x;
+    });
 }
 
 export function transformActivityToJSON() {

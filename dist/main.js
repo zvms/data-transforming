@@ -6,6 +6,7 @@ var fs = require('fs');
 var mongodb = require('mongodb');
 var require$$0 = require('crypto');
 var require$$1 = require('buffer');
+var promises = require('fs/promises');
 
 function connectToSqlite() {
   const pth = path.resolve("database", "zvms.db");
@@ -983,15 +984,6 @@ class Class {
     return this.codeStart * 100 + idx + 1;
   }
    getUser(_id) {
-    console.log(
-      "Getting user",
-      _id,
-      "from class",
-      this.classid,
-      this.studentList.find((x) => x._id === _id),
-      "in",
-      this.studentList
-    );
     return this.studentList.find((x) => x._id === _id);
   }
 }
@@ -1030,10 +1022,8 @@ class ZhenhaiHighSchool {
     const newClassId = change.toClass;
     const oldClass = this.classList.find((x) => x.classid === oldClassId);
     const newClass = this.classList.find((x) => x.classid === newClassId);
-    console.log(oldClass, newClass, oldClass && newClass);
     if (oldClass && newClass) {
       const old = oldClass.getUser(change._id);
-      console.log(old, "old 114514", change._id, oldClassId, newClassId);
       if (old) {
         oldClass.removeUser(change._id);
         newClass.appendUser(old);
@@ -1073,7 +1063,7 @@ function getUserPosition(permission) {
   const isStudent = true;
   const isSecretary = permission & 1;
   const isDepartment = permission & 2;
-  const isAutidor = permission & 4;
+  const isAuditor = permission & 4;
   const isInspector = permission & 8;
   const isAdmin = permission & 16;
   const isSystem = permission & 32;
@@ -1093,13 +1083,12 @@ function getUserPosition(permission) {
         isStudent,
         isSecretary,
         isDepartment,
-        isAutidor,
+        isAuditor,
         isInspector,
         isAdmin,
         isSystem,
       ][i]
   );
-  console.log("User", permission, "has position", result);
   return result;
 }
 
@@ -1247,11 +1236,11 @@ function mappingUser(users, mappings) {
     if (user.id > 20219999) {
       const map = mappings.find((x) => x._id === user._id.toString());
       if (map) {
-        console.log(map, "map");
         return {
           ...user,
           id: map.id,
           code: map.code,
+          password: md5Exports.md5(map.id.toString())
         };
       } else return user;
     } else return user;
@@ -1806,12 +1795,15 @@ function appendMemberIntoActivity(
   return activities
     .map((activity) => {
       const cls = classes.filter((x) => x.volid === activity.oid);
-      console.log(
-        "Appending classes",
-        cls.map((x) => x.classid),
-        "into activity",
-        activity.oid
-      );
+      if (cls.length === 0)
+        console.log("No classes found for activity", activity.oid);
+      else
+        console.log(
+          "Appending classes",
+          cls.map((x) => x.classid).join(", "),
+          "into activity",
+          activity.oid
+        );
       if (cls.length !== 0 && activity.type === "specified") {
         return {
           ...activity,
@@ -1832,7 +1824,11 @@ function appendMemberIntoActivity(
         !x.description.includes(".ignore") &&
         !x.description.includes("测试") &&
         !x.name.includes("测试")
-    );
+    )
+    .map((x) => {
+      delete x.oid;
+      return x;
+    });
 }
 
 function transformActivityToJSON() {
@@ -1869,12 +1865,88 @@ function transformActivityToJSON() {
   );
 }
 
+async function userTransformToImportableData() {
+  const file = await promises.readFile(
+    path.resolve("data", "handler", "user-transformed-mapped.json"),
+    "utf-8"
+  );
+  const parsed = JSON.parse(file);
+  const mapped = parsed.map((x) => {
+    return {
+      ...x,
+      password: x.id.toString(),
+      _id: {
+        $oid: x._id,
+      },
+    };
+  });
+  await promises.writeFile(
+    path.resolve("data", "import", "users.json"),
+    JSON.stringify(mapped, null, "\t")
+  );
+  console.log("Exported the users in", path.resolve("data", "import", "users.json"));
+}
+
+async function activityTransformToImportableData() {
+  const file = await promises.readFile(
+    path.resolve("data", "handler", "activity-transformed.json"),
+    "utf-8"
+  );
+  const parsed = JSON.parse(file);
+  const mapped = parsed.map((x) => {
+    return {
+      ...x,
+      _id: {
+        $oid: x._id,
+      },
+    };
+  });
+  await promises.writeFile(
+    path.resolve("data", "import", "activities.json"),
+    JSON.stringify(mapped, null, "\t")
+  );
+  console.log(
+    "Exported the activities in",
+    path.resolve("data", "import", "activities.json")
+  );
+  console.log(
+    "Now you can import the data into MongoDB using `mongoimport` with the following command:"
+  );
+  console.log(
+    "mongoimport --db <database> --collection <collection> --file <file> --jsonArray"
+  );
+  console.log("Example:");
+  console.log(
+    "mongoimport --db test --collection users --file users.json --jsonArray"
+  );
+}
+
+async function copyZVMSSqliteDatabase() {
+  const src = path.join(
+    "C:",
+    "Users",
+    "public",
+    "workspace",
+    "zvms-bootstrap",
+    "instance",
+    "zvms.db"
+  );
+  const dest = path.resolve("database", "zvms.db");
+  if (fs.existsSync(dest)) {
+    await promises.rm(dest);
+  }
+  return await promises.copyFile(src, dest);
+}
+
 async function main() {
   console.time("export");
+  await copyZVMSSqliteDatabase();
   await exportToJSON();
   transformUserToJSON();
   transformActivityToJSON();
   transformUserToJSONWithMapping();
+  await userTransformToImportableData();
+  await activityTransformToImportableData();
   console.timeEnd("export");
 }
 
