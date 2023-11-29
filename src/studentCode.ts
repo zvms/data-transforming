@@ -14,7 +14,7 @@ interface UserClassChange {
 
 export class Class {
   public studentList: User[] = [];
-  private codeStart = 0;
+  public codeStart = 0;
   public classid = 0;
   constructor(cid: number) {
     const year = Math.floor(cid / 100);
@@ -133,5 +133,11 @@ export class ZhenhaiHighSchool {
   public getClassStudentList(year: number, classid: number) {
     const cls = this.classList.find((x) => x.classid === year * 100 + classid);
     return cls?.studentList;
+  }
+  public getClassWithCode(code: number) {
+    const cls = this.classList.find(
+      (x) => x.codeStart === Math.floor(code / 100)
+    );
+    return cls?.classid;
   }
 }

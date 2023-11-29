@@ -1,5 +1,7 @@
-export interface Activity<T = string> {
-  _id: ObjectId;
+import type { ObjectId } from "mongodb";
+
+export interface Activity<T = ObjectId> {
+  _id: T;
   type: ActivityType;
   name: string;
   description: string;
@@ -36,6 +38,7 @@ export interface ActivityMember {
   _id: string; // ObjectId
   status: MemberActivityStatus;
   impression: string;
+  mode: ActivityMode;
   duration: number;
   history: ActivityMemberHistory[];
   images: string[];
@@ -60,18 +63,20 @@ export type MemberActivityStatus =
 
 export type ActivityStatus = "pending" | "effective" | "refused";
 
-export interface SpecifiedActivity<T> extends Activity<T> {
+export type ActivityMode = "on-campus" | "off-campus" | "large-scale";
+
+export interface SpecifiedActivity extends Activity {
   type: "specified";
   registration: Registration;
 }
 
 export interface SocialActivity extends Activity {
   type: "social";
-  image: string[];
 }
 
 export interface ScaleActivity extends Activity {
   type: "scale";
+  url: string; // FTP Social Practice Report Location.
 }
 
 export type SpecialActivityClassification =
@@ -81,10 +86,41 @@ export type SpecialActivityClassification =
   | "deduction"
   | "other";
 
+export interface Special {
+  classify: SpecialActivityClassification;
+  mode: "on-campus" | "off-campus" | "large-scale";
+}
+
+export interface PrizeSpecial extends Special {
+  classify: "prize";
+  prize: Prize;
+}
+
+export interface ImportSpecial extends Special {
+  classify: "import";
+}
+
+export interface ClubSpecial extends Special {
+  classify: "club";
+  mode: "on-campus" | "off-campus";
+}
+
+export interface DeductionSpecial extends Special {
+  classify: "deduction";
+  reason: string;
+}
+
+export type SpecialInstance =
+  | PrizeSpecial
+  | ImportSpecial
+  | ClubSpecial
+  | DeductionSpecial
+  | Special;
+
 export interface SpecialActivity extends Activity {
   type: "special";
-  mode: "on-campus" | "off-campus" | "large-scale";
-  classify: SpecialActivityClassification;
+  special: SpecialInstance;
+  mode: ActivityMode;
 }
 
 export type PrizeLevel =
@@ -104,41 +140,9 @@ export interface Prize {
   classify: PrizeClassify;
 }
 
-export interface PrizeSpecialActivity extends SpecialActivity {
-  classify: "prize";
-  mode: "on-campus" | "off-campus"; // It can be edited manually, according the latest rule.
-  prize: Prize;
-}
-
-export interface ImportSpecialActivity extends SpecialActivity {
-  classify: "import";
-  mode: "on-campus" | "off-campus" | "large-scale";
-}
-
-export interface ClubSpecialActivity extends SpecialActivity {
-  classify: "club";
-  mode: "on-campus" | "off-campus";
-  club: string;
-}
-
-export interface DeductionSpecialActivity extends SpecialActivity {
-  classify: "deduction";
-  mode: "on-campus" | "off-campus" | "large-scale";
-  reason: string;
-}
-
-export type OtherSpecialActivity = SpecialActivity;
-
-export type SpecialActivityInstance =
-  | PrizeSpecialActivity
-  | ImportSpecialActivity
-  | ClubSpecialActivity
-  | DeductionSpecialActivity
-  | OtherSpecialActivity;
-
 export type ActivityInstance<T = string> =
   | Activity<T>
-  | SpecifiedActivity
-  | SocialActivity
-  | ScaleActivity
-  | SpecialActivityInstance;
+  | SpecifiedActivity<T>
+  | SocialActivity<T>
+  | ScaleActivity<T>
+  | SpecialActivity<T>;

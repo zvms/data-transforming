@@ -5,6 +5,7 @@ import { md5 } from "js-md5";
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { ZhenhaiHighSchool } from "./studentCode";
+import { hashSync } from "bcrypt";
 
 const zhzx = new ZhenhaiHighSchool();
 
@@ -124,13 +125,17 @@ export function transformUserToJSON() {
   );
 }
 
+const userMap: User<ObjectId>[] = [];
+
 export function findUser(user: number) {
-  const list = readFileSync(
-    resolve("data", "handler", "user-transformed.json"),
-    "utf-8"
-  );
-  const parsed = JSON.parse(list) as User<ObjectId>[];
-  const result = parsed.find((u: User<ObjectId>) => u.id === user)?._id as
+  if (userMap.length === 0) {
+    const list = readFileSync(
+      resolve("data", "handler", "user-transformed.json"),
+      "utf-8"
+    );
+    userMap.push(...(JSON.parse(list) as User<ObjectId>[]));
+  }
+  const result = userMap.find((u: User<ObjectId>) => u.id === user)?._id as
     | ObjectId
     | string;
   if (result) {
@@ -199,7 +204,7 @@ export function mappingUser(users: User<ObjectId>[], mappings: UserMapping[]) {
           ...user,
           id: map.id,
           code: map.code,
-          password: md5(map.id.toString())
+          password: md5(map.id.toString()),
         };
       } else return user;
     } else return user;
@@ -220,7 +225,23 @@ export function transformUserToJSONWithMapping() {
   const mapped = mappingUser(
     parsed as unknown as User<ObjectId>[],
     mapsParsed as UserMapping[]
-  );
+  ).map((x) => {
+    console.log(
+      "Mapped user",
+      x.id,
+      "with code",
+      x.code,
+      "in class",
+      zhzx.getClassWithCode(x.code),
+      "with updated id:",
+      zhzx.getUserCode(x._id.toString(), zhzx.getClassWithCode(x.code) ?? 0)
+    );
+    x.code =
+      zhzx.getUserCode(x._id.toString(), zhzx.getClassWithCode(x.code) ?? 0) ??
+      x.code;
+    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
+    return x;
+  });
   writeFileSync(
     resolve("data", "handler", "user-transformed-mapped.json"),
     JSON.stringify(mapped, null, 2)

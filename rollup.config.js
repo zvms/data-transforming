@@ -55,6 +55,6 @@ export default defineConfig([
     watch: {
       include: "src/**",
     },
-    external: ["mongodb", "electron", "sqlite3"],
+    external: ["mongodb", "bcrypt", "sqlite3"],
   },
 ]);

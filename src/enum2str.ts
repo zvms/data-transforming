@@ -5,6 +5,7 @@ import {
   V3VolunteerType,
 } from "./v3";
 import {
+  ActivityMode,
   ActivityStatus,
   ActivityType,
   MemberActivityStatus,
@@ -33,12 +34,17 @@ export function getStatus(status: V3VolunteerStatus) {
 
 export function getType(
   type: V3VolunteerType,
-  status: V3VolunteerStatus
+  status: V3VolunteerStatus,
+  isCreatedBySystem: boolean = false
 ): ActivityType {
-  if (status === V3VolunteerStatus.SPECIAL) {
+  if (status === V3VolunteerStatus.SPECIAL || isCreatedBySystem) {
     return "special";
   }
   return v4ActivityType[type] as ActivityType;
+}
+
+export function getMode(mode: V3VolunteerMode) {
+  return v4ActivityClassify[mode] as ActivityMode;
 }
 
 export function getUserStatus(status: V3UserVolunteerStatus) {

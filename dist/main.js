@@ -7,6 +7,7 @@ var mongodb = require('mongodb');
 var require$$0 = require('crypto');
 var require$$1 = require('buffer');
 var promises = require('fs/promises');
+var bcrypt = require('bcrypt');
 
 function connectToSqlite() {
   const pth = path.resolve("database", "zvms.db");
@@ -1044,9 +1045,16 @@ class ZhenhaiHighSchool {
     const cls = this.classList.find((x) => x.classid === year * 100 + classid);
     return _optionalChain$1([cls, 'optionalAccess', _3 => _3.studentList]);
   }
+   getClassWithCode(code) {
+    const cls = this.classList.find(
+      (x) => x.codeStart === Math.floor(code / 100)
+    );
+    return _optionalChain$1([cls, 'optionalAccess', _4 => _4.classid]);
+  }
 }
 
 function _nullishCoalesce$1(lhs, rhsFn) { if (lhs != null) { return lhs; } else { return rhsFn(); } } function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
+
 const zhzx = new ZhenhaiHighSchool();
 
 function getUserPosition(permission) {
@@ -1165,13 +1173,17 @@ function transformUserToJSON() {
   );
 }
 
+const userMap = [];
+
 function findUser(user) {
-  const list = fs.readFileSync(
-    path.resolve("data", "handler", "user-transformed.json"),
-    "utf-8"
-  );
-  const parsed = JSON.parse(list) ;
-  const result = _optionalChain([parsed, 'access', _3 => _3.find, 'call', _4 => _4((u) => u.id === user), 'optionalAccess', _5 => _5._id]) 
+  if (userMap.length === 0) {
+    const list = fs.readFileSync(
+      path.resolve("data", "handler", "user-transformed.json"),
+      "utf-8"
+    );
+    userMap.push(...(JSON.parse(list) ));
+  }
+  const result = _optionalChain([userMap, 'access', _3 => _3.find, 'call', _4 => _4((u) => u.id === user), 'optionalAccess', _5 => _5._id]) 
 
 ;
   if (result) {
@@ -1240,7 +1252,7 @@ function mappingUser(users, mappings) {
           ...user,
           id: map.id,
           code: map.code,
-          password: md5Exports.md5(map.id.toString())
+          password: md5Exports.md5(map.id.toString()),
         };
       } else return user;
     } else return user;
@@ -1261,7 +1273,23 @@ function transformUserToJSONWithMapping() {
   const mapped = mappingUser(
     parsed ,
     mapsParsed 
-  );
+  ).map((x) => {
+    console.log(
+      "Mapped user",
+      x.id,
+      "with code",
+      x.code,
+      "in class",
+      zhzx.getClassWithCode(x.code),
+      "with updated id:",
+      zhzx.getUserCode(x._id.toString(), _nullishCoalesce$1(zhzx.getClassWithCode(x.code), () => ( 0)))
+    );
+    x.code =
+      _nullishCoalesce$1(zhzx.getUserCode(x._id.toString(), _nullishCoalesce$1(zhzx.getClassWithCode(x.code), () => ( 0))), () => (
+      x.code));
+    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
+    return x;
+  });
   fs.writeFileSync(
     path.resolve("data", "handler", "user-transformed-mapped.json"),
     JSON.stringify(mapped, null, 2)
@@ -1301,6 +1329,8 @@ const v4ActivityStatus = ["", "pending", "effective", "refused", "effective"];
 
 const v4ActivityType = ["", "specified", "social", "scale", "special"];
 
+const v4ActivityClassify = ["", "on-campus", "off-campus", "large-scale"];
+
 const v4ActivityMemberStatus = [
   "",
   "draft",
@@ -1318,12 +1348,17 @@ function getStatus(status) {
 
 function getType(
   type,
-  status
+  status,
+  isCreatedBySystem = false
 ) {
-  if (status === V3VolunteerStatus.SPECIAL) {
+  if (status === V3VolunteerStatus.SPECIAL || isCreatedBySystem) {
     return "special";
   }
   return v4ActivityType[type] ;
+}
+
+function getMode(mode) {
+  return v4ActivityClassify[mode] ;
 }
 
 function getUserStatus(status) {
@@ -1708,6 +1743,40 @@ var dayjs_minExports = dayjs_min.exports;
 var dayjs = /*@__PURE__*/getDefaultExportFromCjs(dayjs_minExports);
 
 function _nullishCoalesce(lhs, rhsFn) { if (lhs != null) { return lhs; } else { return rhsFn(); } }
+const activityOidMap = new Map();
+const activityList = [];
+
+function init() {
+  if (activityList.length === 0) {
+    const activities = fs.readFileSync(
+      path.resolve("data", "export", "volunteer.json"),
+      "utf-8"
+    );
+    const parsed = JSON.parse(activities) ;
+    activityList.push(...parsed);
+  }
+}
+
+function getActivityOid(activity) {
+  if (activity.description.startsWith("append to #")) {
+    const lines = activity.description.split("\n").map((x) => x.trim());
+    const oid = parseInt(lines[0].split("#")[1]);
+    if (isNaN(oid)) return activity.id;
+    function isInActivityList(oid) {
+      return activityList.findIndex((x) => x.id === oid) !== -1;
+    }
+    if (!isInActivityList(oid)) return activity.id;
+    if (activityOidMap.has(oid)) return activityOidMap.get(oid);
+    activityOidMap.set(activity.id, oid);
+    return oid;
+  } else return activity.id;
+}
+
+function checkActivityOid(oid) {
+  console.log("Checking activity oid", oid);
+  if (activityOidMap.has(oid)) return activityOidMap.get(oid);
+  else return oid;
+}
 
 function transformLinearStructure(activities) {
   return activities.map((activity) => {
@@ -1717,8 +1786,11 @@ function transformLinearStructure(activities) {
       "with status",
       activity.status
     );
-    const status = getStatus(activity.status);
-    const type = getType(activity.type, activity.status);
+    const status = getStatus(activity.status) ;
+    const type =
+      activity.holder === 0
+        ? "special"
+        : getType(activity.type, activity.status);
     const result = {
       _id: new mongodb.ObjectId(),
       type,
@@ -1731,7 +1803,7 @@ function transformLinearStructure(activities) {
       updatedAt: dayjs().toISOString(),
       creator: findUser(activity.holder).toString(),
       status,
-      oid: activity.id,
+      oid: getActivityOid(activity),
     } 
 
 ;
@@ -1754,6 +1826,7 @@ function transformLinearStructure(activities) {
 
 function transformActivityMember(
   member,
+  mode,
   duration,
   images = []
 ) {
@@ -1762,11 +1835,18 @@ function transformActivityMember(
   return {
     _id: findUser(member.userid).toString(),
     status,
+    mode,
     impression: member.thought,
     duration: _nullishCoalesce(member.reward / 60, () => ( duration)),
     history: [],
     images,
   } ;
+}
+
+function getActivityMode(oid) {
+  const idx = activityList.findIndex((x) => x.id === oid);
+  if (idx === -1) return "on-campus";
+  else return getMode(activityList[idx].type );
 }
 
 function appendMemberIntoActivity(
@@ -1776,20 +1856,67 @@ function appendMemberIntoActivity(
   classes = []
 ) {
   members.map((member) => {
-    const idx = activities.findIndex((x) => x.oid === member.volid);
+    const volid = checkActivityOid(member.volid);
+    const idx = activities.findIndex((x) => x.oid === volid);
     if (idx) {
       console.log("Appending member", member.userid, "into activity", idx);
-      const activity = activities[idx];
+      const activity = activities[idx] ;
       const image = images
         .filter((x) => x.volid === member.volid && x.userid === member.userid)
         .map((x) => x.filename);
-      activity.members.push(
-        transformActivityMember(
-          member,
-          activity.duration,
-          image
-        ) 
-      );
+      const mode = getActivityMode(member.volid);
+      console.log("Appending member", member.userid, "with mode", mode);
+      if (activity.type === "special")
+        activity.members.push(
+          transformActivityMember(
+            member,
+            mode,
+            activity.duration,
+            image
+          ) 
+        );
+      else if (
+        activity.members.findIndex(
+          (x) => x._id === findUser(member.userid).toString()
+        ) === -1
+      )
+        activity.members.push(
+          transformActivityMember(
+            member,
+            mode,
+            activity.duration,
+            image
+          ) 
+        );
+      else {
+        console.log("Member", member.userid, "already exists in activity", idx);
+        const record = activity.members.find(
+          (x) => x._id === findUser(member.userid).toString()
+        );
+        if (record) {
+          record.images = record.images.concat(image);
+          record.duration += member.reward / 60;
+          /**
+           * Merge Status and Impression.
+           * If the status is "effective", then the impression will be appended.
+           * If the status is "refused", then the impression will be replaced.
+           * If the status is "rejected", then the impression will be replaced.
+           * effective > rejected > pending > refused > draft
+           */
+          if (record.status === "effective") {
+            record.impression += "\n" + member.thought;
+          } else if (
+            record.status === "refused" ||
+            record.status === "rejected"
+          ) {
+            record.impression = member.thought;
+            record.status =
+              getUserStatus(member.status) === "effective"
+                ? "effective"
+                : record.status;
+          }
+        }
+      }
     }
   });
   return activities
@@ -1832,6 +1959,7 @@ function appendMemberIntoActivity(
 }
 
 function transformActivityToJSON() {
+  init();
   const activities = fs.readFileSync(
     path.resolve("data", "export", "volunteer.json"),
     "utf-8"
@@ -1872,9 +2000,11 @@ async function userTransformToImportableData() {
   );
   const parsed = JSON.parse(file);
   const mapped = parsed.map((x) => {
+    const password = bcrypt.hashSync(x.id.toString(), 10);
+    console.log("Hashed password", x.id, "to", password, "for user", x.id);
     return {
       ...x,
-      password: x.id.toString(),
+      password: bcrypt.hashSync(x.password, 10),
       _id: {
         $oid: x._id,
       },
