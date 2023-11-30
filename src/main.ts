@@ -9,7 +9,7 @@ import { copyZVMSSqliteDatabase } from "./copy";
 
 async function main() {
   console.time("export");
-  await copyZVMSSqliteDatabase();
+  // await copyZVMSSqliteDatabase();
   await exportToJSON();
   transformUserToJSON();
   transformActivityToJSON();

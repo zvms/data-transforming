@@ -1999,20 +1999,21 @@ async function userTransformToImportableData() {
     "utf-8"
   );
   const parsed = JSON.parse(file);
-  const mapped = parsed.map((x) => {
-    const password = bcrypt.hashSync(x.id.toString(), 10);
+  const mapped = parsed.map(async (x) => {
+    const password = await bcrypt.hash(x.password, 10);
     console.log("Hashed password", x.id, "to", password, "for user", x.id);
     return {
       ...x,
-      password: bcrypt.hashSync(x.password, 10),
+      password,
       _id: {
         $oid: x._id,
       },
     };
   });
+  const promised = await Promise.all(mapped);
   await promises.writeFile(
     path.resolve("data", "import", "users.json"),
-    JSON.stringify(mapped, null, "\t")
+    JSON.stringify(promised, null, "\t")
   );
   console.log("Exported the users in", path.resolve("data", "import", "users.json"));
 }
@@ -2051,26 +2052,9 @@ async function activityTransformToImportableData() {
   );
 }
 
-async function copyZVMSSqliteDatabase() {
-  const src = path.join(
-    "C:",
-    "Users",
-    "public",
-    "workspace",
-    "zvms-bootstrap",
-    "instance",
-    "zvms.db"
-  );
-  const dest = path.resolve("database", "zvms.db");
-  if (fs.existsSync(dest)) {
-    await promises.rm(dest);
-  }
-  return await promises.copyFile(src, dest);
-}
-
 async function main() {
   console.time("export");
-  await copyZVMSSqliteDatabase();
+  // await copyZVMSSqliteDatabase();
   await exportToJSON();
   transformUserToJSON();
   transformActivityToJSON();

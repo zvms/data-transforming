@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
-import { hashSync } from "bcrypt";
+import { hash } from "bcrypt";
 
 export async function userTransformToImportableData() {
   const file = await readFile(
@@ -8,20 +8,21 @@ export async function userTransformToImportableData() {
     "utf-8"
   );
   const parsed = JSON.parse(file);
-  const mapped = parsed.map((x: any) => {
-    const password = hashSync(x.id.toString(), 10);
+  const mapped = parsed.map(async (x: any) => {
+    const password = await hash(x.password, 10)
     console.log("Hashed password", x.id, "to", password, "for user", x.id);
     return {
       ...x,
-      password: hashSync(x.password, 10),
+      password,
       _id: {
         $oid: x._id,
       },
     };
   });
+  const promised = await Promise.all(mapped)
   await writeFile(
     resolve("data", "import", "users.json"),
-    JSON.stringify(mapped, null, "\t")
+    JSON.stringify(promised, null, "\t")
   );
   console.log("Exported the users in", resolve("data", "import", "users.json"));
 }
