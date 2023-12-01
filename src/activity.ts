@@ -15,6 +15,7 @@ import type {
   ActivityStatus,
   ActivityType,
   Registration,
+  SpecialInstance,
   SpecifiedActivity,
 } from "./v4-types/activity";
 import dayjs from "dayjs";
@@ -29,7 +30,7 @@ function init() {
   if (activityList.length === 0) {
     const activities = readFileSync(
       resolve("data", "export", "volunteer.json"),
-      "utf-8"
+      "utf-8",
     );
     const parsed = JSON.parse(activities) as V3Volunteer[];
     activityList.push(...parsed);
@@ -38,7 +39,10 @@ function init() {
 
 export function getActivityOid(activity: V3Volunteer) {
   if (activity.description.startsWith("append to #")) {
-    const lines = activity.description.split("\n").map((x) => x.trim());
+    const lines = activity.description
+      .replaceAll("\\n", "\n")
+      .split("\n")
+      .map((x) => x.trim());
     const oid = parseInt(lines[0].split("#")[1]);
     if (isNaN(oid)) return activity.id;
     function isInActivityList(oid: number) {
@@ -63,7 +67,7 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
       "Transforming activity",
       activity.id,
       "with status",
-      activity.status
+      activity.status,
     );
     const status = getStatus(activity.status) as ActivityStatus;
     const type: ActivityType =
@@ -73,8 +77,12 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
     const result = {
       _id: new ObjectId(),
       type,
-      name: activity.name,
-      description: activity.description,
+      name: activity.name
+        .replace("（其他）", "")
+        .replace("（社团）", "")
+        .replace("（获奖）", "")
+        .trim(),
+      description: activity.description.replaceAll("自提交义工：", "").trim(),
       members: [],
       duration: activity.reward / 60,
       date: dayjs(activity.time).toISOString(),
@@ -86,6 +94,17 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
     } as ActivityInstance<ObjectId> & {
       oid: number;
     };
+    const special = {
+      classify:
+        activity.holder === 0
+          ? "import"
+          : activity.name.endsWith("（其他）")
+          ? "other"
+          : activity.name.endsWith("（社团）")
+          ? "club"
+          : "other",
+      mode: getMode(activity.type as 1 | 2 | 3 as V3VolunteerMode),
+    } as SpecialInstance;
     const registration = {
       place: "可莉不知道哦",
       deadline: dayjs(activity.time).toISOString(),
@@ -99,7 +118,17 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
       } as SpecifiedActivity & {
         oid: number;
       };
-    } else return result;
+    }
+    if (result.type === "special") {
+      console.log("It is a special activity.");
+      return {
+        ...result,
+        special,
+      } as SpecialInstance & {
+        oid: number;
+      };
+    }
+    return result;
   });
 }
 
@@ -107,7 +136,7 @@ export function transformActivityMember(
   member: V3UserVolunteer,
   mode: ActivityMode,
   duration?: number,
-  images: string[] = []
+  images: string[] = [],
 ) {
   const status = getUserStatus(member.status);
   console.log("Transforming member", member.userid, "with status", status);
@@ -132,7 +161,7 @@ function appendMemberIntoActivity(
   activities: (ActivityInstance<ObjectId> & { oid: number })[],
   members: V3UserVolunteer[],
   images: V3Picture[] = [],
-  classes: V3ClassVolunteer[] = []
+  classes: V3ClassVolunteer[] = [],
 ) {
   members.map((member: V3UserVolunteer) => {
     const volid = checkActivityOid(member.volid);
@@ -151,12 +180,12 @@ function appendMemberIntoActivity(
             member,
             mode,
             activity.duration,
-            image
-          ) as ActivityMember
+            image,
+          ) as ActivityMember,
         );
       else if (
         activity.members.findIndex(
-          (x) => x._id === findUser(member.userid).toString()
+          (x) => x._id === findUser(member.userid).toString(),
         ) === -1
       )
         activity.members.push(
@@ -164,13 +193,13 @@ function appendMemberIntoActivity(
             member,
             mode,
             activity.duration,
-            image
-          ) as ActivityMember
+            image,
+          ) as ActivityMember,
         );
       else {
         console.log("Member", member.userid, "already exists in activity", idx);
         const record = activity.members.find(
-          (x) => x._id === findUser(member.userid).toString()
+          (x) => x._id === findUser(member.userid).toString(),
         );
         if (record) {
           record.images = record.images.concat(image);
@@ -208,7 +237,7 @@ function appendMemberIntoActivity(
           "Appending classes",
           cls.map((x) => x.classid).join(", "),
           "into activity",
-          activity.oid
+          activity.oid,
         );
       if (cls.length !== 0 && activity.type === "specified") {
         return {
@@ -229,7 +258,7 @@ function appendMemberIntoActivity(
         x.members.length !== 0 &&
         !x.description.includes(".ignore") &&
         !x.description.includes("测试") &&
-        !x.name.includes("测试")
+        !x.name.includes("测试"),
     )
     .map((x) => {
       delete x.oid;
@@ -241,22 +270,22 @@ export function transformActivityToJSON() {
   init();
   const activities = readFileSync(
     resolve("data", "export", "volunteer.json"),
-    "utf-8"
+    "utf-8",
   );
   const parsed = JSON.parse(activities);
   const members = readFileSync(
     resolve("data", "export", "user_vol.json"),
-    "utf-8"
+    "utf-8",
   );
   const user_parsed = JSON.parse(members) as V3UserVolunteer[];
   const images = readFileSync(
     resolve("data", "export", "picture.json"),
-    "utf-8"
+    "utf-8",
   );
   const image_parsed = JSON.parse(images) as V3Picture[];
   const classes = readFileSync(
     resolve("data", "export", "class_vol.json"),
-    "utf-8"
+    "utf-8",
   );
   const class_parsed = JSON.parse(classes) as V3ClassVolunteer[];
   const transformed = transformLinearStructure(parsed);
@@ -264,10 +293,10 @@ export function transformActivityToJSON() {
     transformed,
     user_parsed,
     image_parsed,
-    class_parsed
+    class_parsed,
   );
   writeFileSync(
     resolve("data", "handler", "activity-transformed.json"),
-    JSON.stringify(appended, null, 2)
+    JSON.stringify(appended, null, 2),
   );
 }

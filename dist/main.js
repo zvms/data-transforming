@@ -1750,7 +1750,7 @@ function init() {
   if (activityList.length === 0) {
     const activities = fs.readFileSync(
       path.resolve("data", "export", "volunteer.json"),
-      "utf-8"
+      "utf-8",
     );
     const parsed = JSON.parse(activities) ;
     activityList.push(...parsed);
@@ -1759,7 +1759,10 @@ function init() {
 
 function getActivityOid(activity) {
   if (activity.description.startsWith("append to #")) {
-    const lines = activity.description.split("\n").map((x) => x.trim());
+    const lines = activity.description
+      .replaceAll("\\n", "\n")
+      .split("\n")
+      .map((x) => x.trim());
     const oid = parseInt(lines[0].split("#")[1]);
     if (isNaN(oid)) return activity.id;
     function isInActivityList(oid) {
@@ -1784,7 +1787,7 @@ function transformLinearStructure(activities) {
       "Transforming activity",
       activity.id,
       "with status",
-      activity.status
+      activity.status,
     );
     const status = getStatus(activity.status) ;
     const type =
@@ -1794,8 +1797,12 @@ function transformLinearStructure(activities) {
     const result = {
       _id: new mongodb.ObjectId(),
       type,
-      name: activity.name,
-      description: activity.description,
+      name: activity.name
+        .replace("（其他）", "")
+        .replace("（社团）", "")
+        .replace("（获奖）", "")
+        .trim(),
+      description: activity.description.replaceAll("自提交义工：", "").trim(),
       members: [],
       duration: activity.reward / 60,
       date: dayjs(activity.time).toISOString(),
@@ -1807,6 +1814,17 @@ function transformLinearStructure(activities) {
     } 
 
 ;
+    const special = {
+      classify:
+        activity.holder === 0
+          ? "import"
+          : activity.name.endsWith("（其他）")
+          ? "other"
+          : activity.name.endsWith("（社团）")
+          ? "club"
+          : "other",
+      mode: getMode(activity.type ),
+    } ;
     const registration = {
       place: "可莉不知道哦",
       deadline: dayjs(activity.time).toISOString(),
@@ -1820,7 +1838,17 @@ function transformLinearStructure(activities) {
       } 
 
 ;
-    } else return result;
+    }
+    if (result.type === "special") {
+      console.log("It is a special activity.");
+      return {
+        ...result,
+        special,
+      } 
+
+;
+    }
+    return result;
   });
 }
 
@@ -1828,7 +1856,7 @@ function transformActivityMember(
   member,
   mode,
   duration,
-  images = []
+  images = [],
 ) {
   const status = getUserStatus(member.status);
   console.log("Transforming member", member.userid, "with status", status);
@@ -1853,7 +1881,7 @@ function appendMemberIntoActivity(
   activities,
   members,
   images = [],
-  classes = []
+  classes = [],
 ) {
   members.map((member) => {
     const volid = checkActivityOid(member.volid);
@@ -1872,12 +1900,12 @@ function appendMemberIntoActivity(
             member,
             mode,
             activity.duration,
-            image
-          ) 
+            image,
+          ) ,
         );
       else if (
         activity.members.findIndex(
-          (x) => x._id === findUser(member.userid).toString()
+          (x) => x._id === findUser(member.userid).toString(),
         ) === -1
       )
         activity.members.push(
@@ -1885,13 +1913,13 @@ function appendMemberIntoActivity(
             member,
             mode,
             activity.duration,
-            image
-          ) 
+            image,
+          ) ,
         );
       else {
         console.log("Member", member.userid, "already exists in activity", idx);
         const record = activity.members.find(
-          (x) => x._id === findUser(member.userid).toString()
+          (x) => x._id === findUser(member.userid).toString(),
         );
         if (record) {
           record.images = record.images.concat(image);
@@ -1929,7 +1957,7 @@ function appendMemberIntoActivity(
           "Appending classes",
           cls.map((x) => x.classid).join(", "),
           "into activity",
-          activity.oid
+          activity.oid,
         );
       if (cls.length !== 0 && activity.type === "specified") {
         return {
@@ -1950,7 +1978,7 @@ function appendMemberIntoActivity(
         x.members.length !== 0 &&
         !x.description.includes(".ignore") &&
         !x.description.includes("测试") &&
-        !x.name.includes("测试")
+        !x.name.includes("测试"),
     )
     .map((x) => {
       delete x.oid;
@@ -1962,22 +1990,22 @@ function transformActivityToJSON() {
   init();
   const activities = fs.readFileSync(
     path.resolve("data", "export", "volunteer.json"),
-    "utf-8"
+    "utf-8",
   );
   const parsed = JSON.parse(activities);
   const members = fs.readFileSync(
     path.resolve("data", "export", "user_vol.json"),
-    "utf-8"
+    "utf-8",
   );
   const user_parsed = JSON.parse(members) ;
   const images = fs.readFileSync(
     path.resolve("data", "export", "picture.json"),
-    "utf-8"
+    "utf-8",
   );
   const image_parsed = JSON.parse(images) ;
   const classes = fs.readFileSync(
     path.resolve("data", "export", "class_vol.json"),
-    "utf-8"
+    "utf-8",
   );
   const class_parsed = JSON.parse(classes) ;
   const transformed = transformLinearStructure(parsed);
@@ -1985,11 +2013,11 @@ function transformActivityToJSON() {
     transformed,
     user_parsed,
     image_parsed,
-    class_parsed
+    class_parsed,
   );
   fs.writeFileSync(
     path.resolve("data", "handler", "activity-transformed.json"),
-    JSON.stringify(appended, null, 2)
+    JSON.stringify(appended, null, 2),
   );
 }
 
