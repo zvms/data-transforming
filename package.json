@@ -1,5 +1,5 @@
 {
-  "name": "data-transform",
+  "name": "@zvms/data-transform",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
