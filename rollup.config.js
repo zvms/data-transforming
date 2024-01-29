@@ -9,6 +9,7 @@ import terser from "@rollup/plugin-terser";
 import babel from "@rollup/plugin-babel";
 import { resolve } from "path";
 import replace from "@rollup/plugin-replace";
+import { dts } from 'rollup-plugin-dts'
 
 export default defineConfig([
   {
@@ -33,6 +34,13 @@ export default defineConfig([
           }),
         ],
       },
+      {
+        file: "dist/types.d.ts",
+        format: "es",
+        plugins: [
+          dts(),
+        ],
+      }
     ],
     plugins: [
       nodeResolve({

@@ -1798,9 +1798,9 @@ function transformLinearStructure(activities) {
       _id: new mongodb.ObjectId(),
       type,
       name: activity.name
-        .replace("（其他）", "")
-        .replace("（社团）", "")
-        .replace("（获奖）", "")
+        .replaceAll("（其他）", "")
+        .replaceAll("（社团）", "")
+        .replaceAll("（获奖）", "")
         .trim(),
       description: activity.description.replaceAll("自提交义工：", "").trim(),
       members: [],
