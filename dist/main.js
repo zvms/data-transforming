@@ -1329,7 +1329,7 @@ const v4ActivityStatus = ["", "pending", "effective", "refused", "effective"];
 
 const v4ActivityType = ["", "specified", "social", "scale", "special"];
 
-const v4ActivityClassify = ["", "on-campus", "off-campus", "large-scale"];
+const v4ActivityClassify = ["", "on-campus", "off-campus", "social-practice"];
 
 const v4ActivityMemberStatus = [
   "",
