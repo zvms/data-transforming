@@ -204,7 +204,7 @@ export function mappingUser(users: User<ObjectId>[], mappings: UserMapping[]) {
           ...user,
           id: map.id,
           code: map.code,
-          password: md5(map.id.toString()),
+          password: map.id,
         };
       } else return user;
     } else return user;

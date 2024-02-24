@@ -1252,7 +1252,7 @@ function mappingUser(users, mappings) {
           ...user,
           id: map.id,
           code: map.code,
-          password: md5Exports.md5(map.id.toString()),
+          password: map.id,
         };
       } else return user;
     } else return user;
@@ -2028,7 +2028,8 @@ async function userTransformToImportableData() {
   );
   const parsed = JSON.parse(file);
   const mapped = parsed.map(async (x) => {
-    const password = await bcrypt.hash(x.password, 10);
+    const salt = await bcrypt.genSalt();
+    const password = await bcrypt.hash(x.id.toString(), salt);
     console.log("Hashed password", x.id, "to", password, "for user", x.id);
     return {
       ...x,

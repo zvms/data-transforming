@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
-import { hash } from "bcrypt";
+import { genSalt, hash } from "bcrypt";
 
 export async function userTransformToImportableData() {
   const file = await readFile(
@@ -9,8 +9,8 @@ export async function userTransformToImportableData() {
   );
   const parsed = JSON.parse(file);
   const mapped = parsed.map(async (x: any) => {
-    const password = await hash(x.password, 10)
-    console.log("Hashed password", x.id, "to", password, "for user", x.id);
+    const salt = await genSalt()
+    const password = await hash(x.id.toString(), salt)
     return {
       ...x,
       password,
