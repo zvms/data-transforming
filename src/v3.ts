@@ -65,3 +65,8 @@ export interface V3Picture {
   volid: number;
   filename: string;
 }
+
+export interface V3Class {
+  id: number;
+  name: string;
+}

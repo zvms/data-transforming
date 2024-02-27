@@ -1,11 +1,13 @@
 import { ObjectId } from "mongodb";
 import type { V3User } from "./v3";
-import type { User, UserPosition, WithPassword } from "./v4-types/user";
+import type { User, UserPosition, WithPassword } from "@zvms/zvms4-types";
 import { md5 } from "js-md5";
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { ZhenhaiHighSchool } from "./studentCode";
 import { hashSync } from "bcrypt";
+import { getUserGroups } from "./group";
+
 
 const zhzx = new ZhenhaiHighSchool();
 
@@ -52,48 +54,22 @@ export function getUserPosition(permission: number): UserPosition[] {
   return result;
 }
 
-export function UserTransform(user: V3User): User<ObjectId> {
+export function UserTransform(user: V3User): User {
   const result = {
-    _id: new ObjectId(),
+    _id: new ObjectId().toString(),
     id: user.userid,
     name: user.username,
     sex: "unknown" as "unknown",
-    position: getUserPosition(user.permission),
-    code: user.classid * 100 + (user.userid % 100),
-  };
-  if (user.userid > 20219999) {
-    zhzx.appendUser({
-      id: result.id,
-      _id: result._id.toString(),
-      name: result.name,
-    });
-    const code = zhzx.getUserCode(
-      result._id.toString(),
-      Math.floor(result.id / 100)
-    );
-    if (code) {
-      result.code = code;
-    }
-  }
-  console.log("Transformed user", user.userid, "with code", result.code);
+    group: getUserGroups(user)
+  } as User;
+  console.log("Transformed user", user.userid, "with id", result._id);
   return result;
 }
-
-export function withPassword<T>(user: User<T>): WithPassword<User<T>> {
-  return {
-    ...user,
-    password: md5(user.id.toString()),
-  };
-}
-
-export function transformUser(users: V3User[]): WithPassword<User<ObjectId>>[] {
+export function transformUser(users: V3User[]): User[] {
   return users
     .map((user) => {
       return UserTransform(user);
     })
-    .map((user: User<ObjectId>) => {
-      return withPassword(user);
-    });
 }
 
 export function transformUserToJSON() {
@@ -125,7 +101,7 @@ export function transformUserToJSON() {
   );
 }
 
-const userMap: User<ObjectId>[] = [];
+const userMap: User[] = [];
 
 export function findUser(user: number) {
   if (userMap.length === 0) {
@@ -133,9 +109,9 @@ export function findUser(user: number) {
       resolve("data", "handler", "user-transformed.json"),
       "utf-8"
     );
-    userMap.push(...(JSON.parse(list) as User<ObjectId>[]));
+    userMap.push(...(JSON.parse(list) as User[]));
   }
-  const result = userMap.find((u: User<ObjectId>) => u.id === user)?._id as
+  const result = userMap.find((u: User) => u.id === user)?._id as
     | ObjectId
     | string;
   if (result) {
@@ -195,7 +171,7 @@ interface UserMapping {
   code: number;
 }
 
-export function mappingUser(users: User<ObjectId>[], mappings: UserMapping[]) {
+export function mappingUser(users: User[], mappings: UserMapping[]) {
   return users.map((user) => {
     if (user.id > 20219999) {
       const map = mappings.find((x) => x._id === user._id.toString());
@@ -203,12 +179,11 @@ export function mappingUser(users: User<ObjectId>[], mappings: UserMapping[]) {
         return {
           ...user,
           id: map.id,
-          code: map.code,
           password: map.id,
         };
       } else return user;
     } else return user;
-  });
+  }) as User[]
 }
 
 export function transformUserToJSONWithMapping() {
@@ -223,23 +198,18 @@ export function transformUserToJSONWithMapping() {
   const parsed = JSON.parse(users);
   const mapsParsed = JSON.parse(maps);
   const mapped = mappingUser(
-    parsed as unknown as User<ObjectId>[],
+    parsed as unknown as User[],
     mapsParsed as UserMapping[]
   ).map((x) => {
+    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
     console.log(
       "Mapped user",
       x.id,
-      "with code",
-      x.code,
-      "in class",
-      zhzx.getClassWithCode(x.code),
-      "with updated id:",
-      zhzx.getUserCode(x._id.toString(), zhzx.getClassWithCode(x.code) ?? 0)
+      "with id",
+      x._id,
+      "to name",
+      x.name,
     );
-    x.code =
-      zhzx.getUserCode(x._id.toString(), zhzx.getClassWithCode(x.code) ?? 0) ??
-      x.code;
-    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
     return x;
   });
   writeFileSync(

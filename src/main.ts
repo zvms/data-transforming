@@ -1,22 +1,26 @@
-import { exportToJSON } from "./export";
-import { transformUserToJSON, transformUserToJSONWithMapping } from "./user";
-import { transformActivityToJSON } from "./activity";
+import { exportToJSON } from './export'
+import { transformUserToJSON, transformUserToJSONWithMapping } from './user'
+import { transformActivityToJSON } from './activity'
 import {
   activityTransformToImportableData,
   userTransformToImportableData,
-} from "./build";
-import { copyZVMSSqliteDatabase } from "./copy";
+  groupTransformToImportableData
+} from './build'
+import { copyZVMSSqliteDatabase } from './copy'
+import { exportClassToGroup } from './group'
 
 async function main() {
-  console.time("export");
+  console.time('export')
   // await copyZVMSSqliteDatabase();
-  await exportToJSON();
-  transformUserToJSON();
-  transformActivityToJSON();
-  transformUserToJSONWithMapping();
-  await userTransformToImportableData();
-  await activityTransformToImportableData();
-  console.timeEnd("export");
+  await exportToJSON()
+  exportClassToGroup()
+  transformUserToJSON()
+  transformActivityToJSON()
+  transformUserToJSONWithMapping()
+  await groupTransformToImportableData()
+  await userTransformToImportableData()
+  await activityTransformToImportableData()
+  console.timeEnd('export')
 }
 
-main();
+main()
