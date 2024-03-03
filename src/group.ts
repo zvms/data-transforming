@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
 import { ObjectId } from 'mongodb'
 import type { V3Class, V3User } from './v3'
-import type { Group, User } from '@zvms/zvms4-types'
+import type { Group } from '@zvms/zvms4-types'
 import { getUserPosition } from './user'
 
 export const groups = [] as Group[]
@@ -107,7 +107,7 @@ export function getUserGroups(user: V3User) {
   const perm = getUserPosition(user.permission)
   const result: Group[] = perm
     .map((x) => {
-      return groups.find((y) => y.permissions.includes(x))
+      return groups.find((y) => y.type !== 'class' && y.permissions.includes(x))
     })
     .filter((x) => x !== undefined) as Group[]
   const userGroup = groups.find((x) => x.description === user.classid.toString())
@@ -119,7 +119,7 @@ export function getUserGroups(user: V3User) {
 }
 
 export function findClassId(id: string[]) {
-  const result = groups.filter((x) => id.includes(x._id) && x.type === 'class')
+  const result = groups.filter((x) => id.includes(x._id))
   if (result) {
     return result[0].description
   }

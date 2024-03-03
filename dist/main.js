@@ -257,7 +257,7 @@ function exportClassToGroup() {
       type: 'permission'
     }
   ]; 
-  const mapped = parsed.map((x) => {
+  const mapped = parsed.filter(x => x.id.toString() !== '0').map((x) => {
     return {
       _id: new mongodb.ObjectId().toString(),
       name: v3NameToV4Name(x.name),
@@ -271,7 +271,6 @@ function exportClassToGroup() {
   }
   groups.push(...existsed);
   groups.push(...mapped);
-  console.log(groups);
   fs.writeFileSync(
     path.resolve('data', 'handler', 'group-transformed.json'),
     JSON.stringify(groups, null, 2),
@@ -283,18 +282,19 @@ function getUserGroups(user) {
   const perm = getUserPosition(user.permission);
   const result = perm
     .map((x) => {
-      return groups.find((y) => y.permissions.includes(x))
+      return groups.find((y) => y.type !== 'class' && y.permissions.includes(x))
     })
     .filter((x) => x !== undefined); 
   const userGroup = groups.find((x) => x.description === user.classid.toString());
   if (userGroup) {
     result.push(userGroup);
   }
-  return result.map((x) => x._id)
+  const ids = new Set(result.map((x) => x._id));
+  return Array.from(ids)
 }
 
 function findClassId(id) {
-  const result = groups.filter((x) => id.includes(x._id) && x.type === 'class');
+  const result = groups.filter((x) => id.includes(x._id));
   if (result) {
     return result[0].description
   }
@@ -302,6 +302,11 @@ function findClassId(id) {
 }
 
 function _nullishCoalesce$2(lhs, rhsFn) { if (lhs != null) { return lhs; } else { return rhsFn(); } } function _optionalChain$1(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
+const userDataTable = JSON.parse(
+  fs.readFileSync(
+    path.resolve('database', 'user_id.json'),
+  ).toString()
+) ;
 
 const zhzx = new ZhenhaiHighSchool();
 
@@ -495,6 +500,10 @@ function transformUserToJSONWithMapping() {
     parsed ,
     mapsParsed 
   ).map((x) => {
+    const userData = userDataTable.find(user => user.name === x.name);
+    if (userData) {
+      x.id = userData.id;
+    }
     x.name = x.name.replace(/[A-Za-z0-9]+/, "");
     console.log(
       "Mapped user",
