@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { ZhenhaiHighSchool } from "./studentCode";
 import { hashSync } from "bcrypt";
-import { getUserGroups } from "./group";
+import { findClassId, getUserGroups } from "./group";
 
 const userDataTable = JSON.parse(
   readFileSync(
@@ -217,11 +217,12 @@ export function transformUserToJSONWithMapping() {
     parsed as unknown as User[],
     mapsParsed as UserMapping[]
   ).map((x) => {
-    const userData = userDataTable.find(user => user.name === x.name)
+    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
+    const classid = findClassId(x.group)
+    const userData = userDataTable.find(user => user.name === x.name && parseInt(classid ?? '') === user.classid)
     if (userData) {
       x.id = userData.id
     }
-    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
     console.log(
       "Mapped user",
       x.id,

@@ -500,11 +500,12 @@ function transformUserToJSONWithMapping() {
     parsed ,
     mapsParsed 
   ).map((x) => {
-    const userData = userDataTable.find(user => user.name === x.name);
+    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
+    const classid = findClassId(x.group);
+    const userData = userDataTable.find(user => user.name === x.name && parseInt(_nullishCoalesce$2(classid, () => ( ''))) === user.classid);
     if (userData) {
       x.id = userData.id;
     }
-    x.name = x.name.replace(/[A-Za-z0-9]+/, "");
     console.log(
       "Mapped user",
       x.id,
@@ -1048,7 +1049,7 @@ function transformLinearStructure(activities) {
       registration:
         type === 'specified'
           ? {
-              place: '可莉不知道哦',
+              place: '地址未填写',
               deadline: dayjs(activity.time).toISOString(),
               classes: []
             }
@@ -1064,7 +1065,7 @@ function transformLinearStructure(activities) {
           ? 'other'
           : activity.name.endsWith('（社团）')
           ? 'club'
-          : 'other',
+          : 'other'
     }; 
     const registration = {
       place: '可莉不知道哦',

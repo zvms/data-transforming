@@ -98,7 +98,7 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
       registration:
         type === 'specified'
           ? {
-              place: '可莉不知道哦',
+              place: '地址未填写',
               deadline: dayjs(activity.time).toISOString(),
               classes: []
             }
@@ -114,7 +114,7 @@ export function transformLinearStructure(activities: V3Volunteer[]) {
           ? 'other'
           : activity.name.endsWith('（社团）')
           ? 'club'
-          : 'other',
+          : 'other'
     } as SpecialInstance
     const registration = {
       place: '可莉不知道哦',
